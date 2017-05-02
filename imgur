@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# env `CLIENT_ID` and `CLIENT_SECRET`
+source ~/.imgur/app.sh
+
+BASE_URL=https://api.imgur.com
+
+usage() {
+    cat <<EOM
+NAME
+    imgur -- imgur.com CLI
+
+SIYNOPSIS
+
+    imgur auth
+
+        make authorization
+
+    imgur album create <title>
+
+        make new album
+        The album info (title, id, hashtag) will be stored in ~/.imgur/albums.jsonl
+
+    imgur album ls
+
+        list up your albums which are stored in ~/.imgur/albums.jsonl
+
+    imgur [--title <title>] [-d <description>] [-A <album-deletehash>] [--url] <file>
+
+        upload an image [with the title and the description]
+        <file> is the path or url. To specify by url, --url needs.
+EOM
+}
+
+browser-open() {
+    if which firefox >/dev/null; then
+        firefox "$1"
+    else
+        open -a 'Firefox' "$1"
+    fi
+}
+
+auth() {
+    URL="$BASE_URL/oauth2/authorize?client_id=${CLIENT_ID}&response_type=pin"
+    browser-open $URL
+    echo -n "PIN> "
+    read PIN
+    curl -XPOST \
+        -F "client_id=$CLIENT_ID" \
+        -F "client_secret=$CLIENT_SECRET" \
+        -F "grant_type=pin" \
+        -F "pin=$PIN" \
+        "$BASE_URL/oauth2/token" > ~/.imgur/auth.json
+}
+
+error-handling() {
+    jq -r 'if .success then .data.link else .data.error end'
+}
+
+image-upload() {
+    URL="$BASE_URL/3/image"
+    OPTS=
+    FILE=
+    URL_MODE=
+    while [ ! -z "$1" ]; do
+        case "$1" in
+            -t | --title | -title )
+                OPTS="$OPTS -F \"title=$2\""
+                shift 2
+                ;;
+            -d | -D | --description )
+                OPTS="$OPTS -F \"description=$2\""
+                shift 2
+                ;;
+            -A | --album )
+                OPTS="$OPTS -F \"album=$2\""
+                shift
+                ;;
+            --url )
+                URL_MODE=on
+                shift
+                ;;
+            * )
+                FILE=$1
+                shift 1
+                ;;
+        esac
+    done
+
+    if [ -z "$FILE" ]; then
+        usage
+        exit 0
+    fi
+
+    TOKEN_HEADER="Authorization: Bearer $(jq -r .access_token ~/.imgur/auth.json)"
+
+    if [ ! -z "$URL_MODE" ]; then
+        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F type=url -F image=$FILE $URL" | sh | error-handling
+    else
+        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F image=@$FILE $URL" | sh | error-handling
+    fi
+}
+
+album-create() {
+    URL="$BASE_URL/3/album"
+    TOKEN_HEADER="Authorization: Bearer $(jq -r .access_token ~/.imgur/auth.json)"
+    curl -s -H "$TOKEN_HEADER" -F "title=$1" "$URL" |
+    jq -cM ".data | {title: \"$1\", id, deletehash}" >> ~/.imgur/albums.jsonl
+}
+
+album-ls() {
+    printf "TITLE\tID\tDELETEHASH\n"
+    cat ~/.imgur/albums.jsonl | jq -r '"\(.title)\t\(.id)\t\(.deletehash)"'
+}
+
+case "$1" in
+    -h | --help )
+        usage
+        ;;
+    auth )
+        auth
+        ;;
+    album)
+        case "$2" in
+            create )
+                album-create "$3"
+                ;;
+            ls )
+                album-ls
+                ;;
+            * )
+                usage
+                ;;
+        esac
+        ;;
+    * )
+        image-upload "$@"
+        ;;
+esac
