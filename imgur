@@ -23,7 +23,11 @@ SIYNOPSIS
 
     imgur album ls
 
-        list up your albums which are stored in ~/.imgur/albums.jsonl
+        list up your albums, which are stored in ~/.imgur/albums.jsonl
+
+    imgur album ls <album-name>
+
+        list up all images in the album
 
     imgur [--title <title>] [-d <description>] [-A <album-deletehash>] [--url] <file>
 
@@ -32,6 +36,8 @@ SIYNOPSIS
 EOM
 }
 
+## helpers
+
 browser-open() {
     if which firefox >/dev/null; then
         firefox "$1"
@@ -39,6 +45,22 @@ browser-open() {
         open -a 'Firefox' "$1"
     fi
 }
+
+error-handling() {
+    jq -r 'if .success then .data.link else .data.error end'
+}
+
+albumname_to_id() {
+    jq -r "select(.title == \"$1\") | .id" ~/.imgur/albums.jsonl |
+    head -1
+}
+
+albumname_to_deletehash() {
+    jq -r "select(.title == \"$1\") | .deletehash" ~/.imgur/albums.jsonl |
+    head -1
+}
+
+## commands
 
 auth() {
     URL="$BASE_URL/oauth2/authorize?client_id=${CLIENT_ID}&response_type=pin"
@@ -51,10 +73,6 @@ auth() {
         -F "grant_type=pin" \
         -F "pin=$PIN" \
         "$BASE_URL/oauth2/token" > ~/.imgur/auth.json
-}
-
-error-handling() {
-    jq -r 'if .success then .data.link else .data.error end'
 }
 
 image-upload() {
@@ -73,7 +91,8 @@ image-upload() {
                 shift 2
                 ;;
             -A | --album )
-                OPTS="$OPTS -F \"album=$2\""
+                DELETEHASH=$(albumname_to_deletehash "$2")
+                OPTS="$OPTS -F \"album=${DELETEHASH}\""
                 shift
                 ;;
             --url )
@@ -105,12 +124,21 @@ album-create() {
     URL="$BASE_URL/3/album"
     TOKEN_HEADER="Authorization: Bearer $(jq -r .access_token ~/.imgur/auth.json)"
     curl -s -H "$TOKEN_HEADER" -F "title=$1" "$URL" |
-    jq -cM ".data | {title: \"$1\", id, deletehash}" >> ~/.imgur/albums.jsonl
+    jq -cM ".data | {title: \"$1\", id, deletehash}" |
+    tee -a ~/.imgur/albums.jsonl
 }
 
 album-ls() {
     printf "TITLE\tID\tDELETEHASH\n"
     cat ~/.imgur/albums.jsonl | jq -r '"\(.title)\t\(.id)\t\(.deletehash)"'
+}
+
+album-image-ls() {
+    ID=$(albumname_to_id "$1")
+    URL="$BASE_URL/3/album/${ID}/images"
+    TOKEN_HEADER="Authorization: Bearer $(jq -r .access_token ~/.imgur/auth.json)"
+    curl -s -H "$TOKEN_HEADER" "$URL" |
+    jq '.data[] | {id, title, description, link, deletehash}'
 }
 
 case "$1" in
@@ -126,7 +154,11 @@ case "$1" in
                 album-create "$3"
                 ;;
             ls )
-                album-ls
+                if [ $# -eq 2 ]; then
+                    album-ls
+                else
+                    album-image-ls "$3"
+                fi
                 ;;
             * )
                 usage
