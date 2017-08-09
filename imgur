@@ -1,7 +1,20 @@
 #!/bin/bash
 
 # env `CLIENT_ID` and `CLIENT_SECRET`
-source ~/.imgur/app.sh
+if [ -f ~/.imgur/app.sh ]; then
+    source ~/.imgur/app.sh
+else
+    cat << EOM
+Error: ~/.imgur/app.sh not found
+
+Please put your CLIENT_ID and CLIENT_SECRET in ~/.imgur/app.sh
+like
+
+CLIENT_ID=xxxxx
+CLIENT_SECRET=xxxxyyyyyyyzzzzzzzzz
+EOM
+    exit 0
+fi
 
 BASE_URL=https://api.imgur.com
 
