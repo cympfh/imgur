@@ -29,10 +29,9 @@ SIYNOPSIS
 
         list up all images in the album
 
-    imgur [--title <title>] [-d <description>] [-A <album-deletehash>] [--url] <file>
+    imgur [--title <title>] [-d <description>] [-A <album-name>] <file or URL>
 
         upload an image [with the title and the description]
-        <file> is the path or url. To specify by url, --url needs.
 EOM
 }
 
@@ -95,13 +94,15 @@ image-upload() {
                 OPTS="$OPTS -F \"album=${DELETEHASH}\""
                 shift
                 ;;
-            --url )
+            http://* | https://* )
                 URL_MODE=on
+                FILE=$1
                 shift
                 ;;
             * )
+                URL_MODE=
                 FILE=$1
-                shift 1
+                shift
                 ;;
         esac
     done
