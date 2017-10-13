@@ -42,7 +42,7 @@ SIYNOPSIS
 
         list up all images in the album
 
-    imgur [--title <title>] [-d <description>] [-A <album-name>] <file or URL>
+    imgur up [--title <title>] [-d <description>] [-A <album-name>] <file or URL>
 
         upload an image [with the title and the description]
 EOM
@@ -156,9 +156,6 @@ album-image-ls() {
 }
 
 case "$1" in
-    -h | --help )
-        usage
-        ;;
     auth )
         auth
         ;;
@@ -179,7 +176,11 @@ case "$1" in
                 ;;
         esac
         ;;
-    * )
+    up )
+        shift
         image-upload "$@"
+        ;;
+    * )
+        usage
         ;;
 esac

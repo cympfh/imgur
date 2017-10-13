@@ -1,0 +1,43 @@
+#compdef imgur
+
+_imgur_albums() {
+    imgur album ls | awk 'NR>1{print $1}' | tr '\n' ' ' | sed 's/ *$//g'
+}
+
+if [ $CURRENT -eq 2 ]; then
+    _values args \
+        'auth[Authorization to imgur]' \
+        'album[Albums management]' \
+        'up[Upload an image]'
+else
+    case $words[2] in
+        auth )
+            ;;
+        album )
+            if [ $CURRENT -eq 3 ]; then
+                _values args create ls
+            else
+                if [ $words[3] == ls ]; then
+                    _values albums $(_imgur_albums)
+                fi
+            fi
+            ;;
+        up )
+            if [ $words[$((CURRENT - 1))] == -A ]; then
+                _values albums $(_imgur_albums)
+            else
+                _arguments \
+                    '--title[Image title]' \
+                    '-d[Image desciption]' \
+                    '-A[Album to upload]' \
+                    '*:files:->file'
+            fi
+            ;;
+    esac
+fi
+
+case $state in
+    file)
+        _files
+        ;;
+esac
