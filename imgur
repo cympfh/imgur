@@ -128,7 +128,7 @@ image-upload() {
     TOKEN_HEADER="Authorization: Bearer $(jq -r .access_token ~/.imgur/auth.json)"
 
     if [ ! -z "$URL_MODE" ]; then
-        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F type=url -F image=$FILE $URL" | sh | error-handling
+        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F type=url -F \"image=$FILE\" $URL" | sh | error-handling
     else
         echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F image=@$FILE $URL" | sh | error-handling
     fi
