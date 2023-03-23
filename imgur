@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # env `CLIENT_ID` and `CLIENT_SECRET`
-if [ -f ~/.imgur/app.sh ]; then
+if [ "$IMGUR_CLIENT_ID" ] && [ "$IMGUR_CLIENT_SECRET" ]; then
+    CLIENT_ID=$IMGUR_CLIENT_ID
+    CLIENT_SECRET=$IMGUR_CLIENT_SECRET
+elif [ -f ~/.imgur/app.sh ]; then
     source ~/.imgur/app.sh
 else
     cat << EOM
@@ -51,6 +54,7 @@ EOM
 ## helpers
 
 browser-open() {
+    echo "Open $1"
     if which firefox >/dev/null; then
         firefox "$1"
     else
@@ -130,7 +134,7 @@ image-upload() {
     if [ ! -z "$URL_MODE" ]; then
         echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F type=url -F \"image=$FILE\" $URL" | sh | error-handling
     else
-        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F image=@$FILE $URL" | sh | error-handling
+        echo "curl -s -H \"$TOKEN_HEADER\" -XPOST $OPTS -F \"image=@$FILE\" $URL" | sh | error-handling
     fi
 }
 
